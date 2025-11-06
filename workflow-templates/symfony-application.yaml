@@ -89,7 +89,7 @@ jobs:
   phpunit:
     name: "PHPUnit"
     runs-on: ubuntu-latest
-    needs: [validate, coding-standards]
+    needs: [validate]
     services:
       mysql:
         image: mysql:8.0-oracle
