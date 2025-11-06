@@ -5,7 +5,6 @@ on:
   push:
     branches: [ $default-branch ]
 
-
 env:
   PHP_VERSION: "8.4"
   PHP_EXTENSIONS: "mbstring, intl, pdo_mysql, opcache, zip, bcmath"
@@ -79,7 +78,7 @@ jobs:
         run: tools/phpstan/vendor/bin/phpstan analyse
 
       - name: Install php-cs-fixer
-        uses: ramsey/composer-install@v2
+        uses: ramsey/composer-install@v3
         with:
           composer-options: --no-progress --no-scripts --prefer-dist
           working-directory: tools/php-cs-fixer
