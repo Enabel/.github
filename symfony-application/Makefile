@@ -97,22 +97,26 @@ docker-down: compose.yaml ## Stop the docker hub
 
 ## —— CI: Tools ✅ —————————————————————————————————————————————————————————————
 tools: composer-install ## Install CI tools
-	$(COMPOSER) install -W -d tools/php-cs-fixer
-	$(COMPOSER) install -W -d tools/phpstan
+	$(COMPOSER) install -d tools/php-cs-fixer
+	$(COMPOSER) install -d tools/phpstan
 
 tools-pull: tools  ## Upgrade CI tools
-	$(COMPOSER) upgrade -W -d tools/php-cs-fixer
-	$(COMPOSER) upgrade -W -d tools/phpstan
+	$(COMPOSER) upgrade -d tools/php-cs-fixer
+	$(COMPOSER) upgrade -d tools/phpstan
 
 ## —— CI: Tests ✅ —————————————————————————————————————————————————————————————
 tests: composer-install ## Run the PHPUnit tests
 	$(PHPUNIT) --testdox --coverage-text
 
 ## —— CI: Coding standards ✨ ——————————————————————————————————————————————————
-analyse: php-cs-fixer php-stan ## Run PHPCsFixer (PSR12, Symfony) & PHPStan
+analyze: php-cs-fixer php-stan ## Analyze PHPCsFixer (PSR12, Symfony) & PHPStan
+fix: php-cs-fixer-fix ## Fix code with PHPCsFixer
 
 php-cs-fixer: tools ## Run PHPCsFixer (PSR12, Symfony)
 	$(PHP) tools/php-cs-fixer/vendor/bin/php-cs-fixer fix --dry-run --diff
+
+php-cs-fixer-fix: tools ## Run PHPCsFixer (PSR12, Symfony)
+	$(PHP) tools/php-cs-fixer/vendor/bin/php-cs-fixer fix
 
 php-stan: tools ## Run PHPStan
 	$(PHP) tools/phpstan/vendor/bin/phpstan analyse
