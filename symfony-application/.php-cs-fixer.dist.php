@@ -6,10 +6,12 @@ $finder = PhpCsFixer\Finder::create()
 ;
 
 return (new PhpCsFixer\Config())
+    ->setRiskyAllowed(true)
     ->setRules([
         '@Symfony' => true,
         '@PSR12' => true,
         'array_syntax' => ['syntax' => 'short'],
+        'declare_strict_types' => ['preserve_existing_declaration' => true],
         'ordered_imports' => true,
         'no_unused_imports' => true,
         'header_comment' => [
