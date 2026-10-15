@@ -1,0 +1,194 @@
+# Reusable CI for Enabel Symfony applications.
+name: Symfony application
+
+on:
+  workflow_call:
+    inputs:
+      php-version:
+        type: string
+        default: '8.4'
+      php-extensions:
+        description: Added to the base set (intl, zip, pdo_mysql, gd, mbstring, bcmath)
+        type: string
+        default: ''
+      system-packages:
+        description: Extra apt packages for the tests job
+        type: string
+        default: ''
+      upsun-config:
+        description: Upsun config the test services are read from
+        type: string
+        default: .upsun/config.yaml
+
+# No job needs to write to the repository; callers cannot grant more anyway.
+permissions:
+  contents: read
+
+env:
+  COMPOSER_NO_INTERACTION: 1
+
+# Explicit `bash` adds pipefail: `php-cs-fixer | cs2pr` must fail when php-cs-fixer does.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-qa
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      # Setup steps are anchored and reused by the tests job.
+      - &checkout
+        uses: actions/checkout@v5
+
+      - &setup-php
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ inputs.php-version }}
+          extensions: intl, zip, pdo_mysql, gd, mbstring, bcmath, ${{ inputs.php-extensions }}
+          coverage: none
+          ini-values: memory_limit=512M
+          tools: composer:v2, cs2pr
+
+      - &composer-cache-dir
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - &composer-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock', 'tools/*/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - &install
+        name: Install dependencies
+        run: |
+          shopt -s nullglob
+          composer install --prefer-dist --no-progress
+          for dir in tools/*/; do
+            if [ -f "$dir/composer.json" ]; then
+              composer install --prefer-dist --no-progress -d "$dir"
+            fi
+          done
+
+      # --- qa checks: each runs even if a previous one failed -----------------
+
+      - name: Composer validate
+        if: ${{ !cancelled() }}
+        run: composer validate --no-check-publish
+
+      - name: Composer audit
+        if: ${{ !cancelled() }}
+        run: composer audit
+
+      - name: Lint YAML
+        if: ${{ !cancelled() }}
+        run: bin/console lint:yaml config --parse-tags
+
+      - name: Lint Twig
+        if: ${{ !cancelled() }}
+        run: bin/console lint:twig templates
+
+      - name: Lint container
+        if: ${{ !cancelled() }}
+        run: bin/console lint:container
+
+      - name: Lint XLIFF
+        if: ${{ !cancelled() }}
+        run: |
+          [ -d translations ] || exit 0
+          bin/console lint:xliff translations
+
+      - name: Doctrine schema
+        if: ${{ !cancelled() }}
+        run: |
+          [ -f config/packages/doctrine.yaml ] || exit 0
+          bin/console doctrine:schema:validate --skip-sync --no-interaction
+
+      - name: PHP CS Fixer
+        if: ${{ !cancelled() }}
+        run: tools/php-cs-fixer/vendor/bin/php-cs-fixer fix --dry-run --format=checkstyle | cs2pr
+
+      - name: PHPStan
+        if: ${{ !cancelled() }}
+        run: |
+          bin/console cache:warmup
+          tools/phpstan/vendor/bin/phpstan analyse --memory-limit=512M --error-format=github
+
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-tests
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    env:
+      APP_ENV: test
+    steps:
+      - *checkout
+      - *setup-php
+      - *composer-cache-dir
+      - *composer-cache
+      - *install
+
+      - name: System packages
+        if: ${{ inputs.system-packages != '' }}
+        run: sudo apt-get update && sudo apt-get install -y ${{ inputs.system-packages }}
+
+      # In a reusable workflow `./` is the caller's repository: fetch the
+      # script from this workflow's own repository, at this workflow's commit.
+      - uses: actions/checkout@v5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .enabel-ci
+
+      - name: Start Upsun services
+        run: bash .enabel-ci/scripts/upsun-services.sh "${{ inputs.upsun-config }}"
+
+      - name: Importmap
+        run: |
+          [ -f importmap.php ] || exit 0
+          bin/console importmap:install
+
+      - name: Database
+        run: |
+          [ -n "${DATABASE_URL:-}" ] || exit 0
+          bin/console doctrine:database:create --if-not-exists
+          bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+
+      - name: PHPUnit
+        # Projects may configure coverage reports in phpunit.dist.xml; CI runs
+        # without a coverage driver, and failOnWarning would turn that into a failure.
+        run: vendor/bin/phpunit --testdox --no-coverage
+
+  # No concurrency group: a pending run cancelled by a newer push would leave
+  # its commit range unscanned, since each run only scans its own range.
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Commit range
+        id: range
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          # A push creating a branch has no "before": scan the pushed commit only.
+          if [ -z "$BASE" ] || [ "$BASE" = 0000000000000000000000000000000000000000 ]; then
+            echo "log-opts=-1 $HEAD" >> "$GITHUB_OUTPUT"
+          else
+            echo "log-opts=$BASE..$HEAD" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Gitleaks
+        run: >-
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.28.0
+          git --log-opts="${{ steps.range.outputs.log-opts }}" --redact -v /repo

@@ -1,0 +1,9 @@
+applications:
+  app:
+    type: php:8.4
+    relationships:
+      database: { service: db, endpoint: mysql }
+      database_ro: { service: db, endpoint: mysql }
+services:
+  db:
+    type: mariadb:11.8

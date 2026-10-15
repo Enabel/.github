@@ -1,0 +1,51 @@
+# Post the Upsun preview URL as a pull request comment.
+# The Upsun GitHub integration only sets an `upsun` commit status; this copies
+# its URL into one comment per pull request, updated on every new preview.
+# Callers trigger it `on: status`, which GitHub runs from the default branch.
+name: Upsun preview comment
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  comment:
+    if: github.event.context == 'upsun' && github.event.state == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # One run at a time per commit (e.g. a redeploy), so two runs cannot both
+    # create the comment. Per commit, not per repository: a group keeps only one
+    # pending run, so a wider group would drop other pull requests' runs.
+    # Different commits of one pull request cannot clash: only its head writes.
+    concurrency:
+      group: upsun-preview-comment-${{ github.event.sha }}
+      cancel-in-progress: false
+    steps:
+      - name: Comment preview URL
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.sha }}
+          URL: ${{ github.event.target_url }}
+        run: |
+          marker='<!-- upsun-preview -->'
+          # shellcheck disable=SC2016 # backticks are Markdown inline code
+          body=$(printf '%s\n**Upsun preview:** %s\n\nCommit `%s`' "$marker" "$URL" "${SHA:0:7}")
+          # Only the pull requests whose head is this commit: a stacked pull request
+          # also contains it, and an older commit must not overwrite a newer preview.
+          prs=$(gh api "repos/$REPO/commits/$SHA/pulls" \
+            --jq ".[] | select(.state == \"open\" and .head.sha == \"$SHA\") | .number")
+          for pr in $prs; do
+            id=$(gh api --paginate "repos/$REPO/issues/$pr/comments" \
+              --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" \
+              | head -n 1)
+            if [ -n "$id" ]; then
+              gh api -X PATCH "repos/$REPO/issues/comments/$id" -f body="$body" >/dev/null
+            else
+              gh api "repos/$REPO/issues/$pr/comments" -f body="$body" >/dev/null
+            fi
+            echo "PR #$pr: $URL"
+          done

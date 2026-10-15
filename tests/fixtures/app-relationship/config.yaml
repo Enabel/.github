@@ -1,0 +1,11 @@
+applications:
+  app:
+    type: php:8.4
+    relationships:
+      redis:
+      api: { service: backend, endpoint: http }
+  backend:
+    type: php:8.4
+services:
+  redis:
+    type: redis:8.0

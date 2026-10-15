@@ -1,0 +1,7 @@
+{
+  "name": "Enabel Symfony CI",
+  "description": "QA, tests and secret scan for an Enabel Symfony application, through the shared reusable workflow.",
+  "iconName": "symfony-icon",
+  "categories": ["PHP", "Symfony"],
+  "filePatterns": ["^symfony\\.lock$", "^bin/console$"]
+}

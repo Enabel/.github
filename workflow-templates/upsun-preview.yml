@@ -1,0 +1,13 @@
+name: Upsun preview
+
+# The Upsun integration sets an `upsun` commit status; this comments its URL on
+# the pull request. Status events run this file from the default branch only.
+on: status
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  comment:
+    uses: enabel/.github/.github/workflows/upsun-preview-comment.yml@v1

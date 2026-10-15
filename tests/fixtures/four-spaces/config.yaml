@@ -1,0 +1,17 @@
+applications:
+    app:
+        type: php:8.4
+        relationships:
+            database: {}
+            redis: {}
+
+services:
+    redis:
+        type: redis:8.0
+    database:
+        type: oracle-mysql:8.4
+
+routes:
+    https://{default}/:
+        type: upstream
+        upstream: app:http

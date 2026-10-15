@@ -1,0 +1,11 @@
+applications:
+  app:
+    type: php:8.4
+    relationships:
+      database: {}
+      redis: {}
+services:
+  database:
+    type: oracle-mysql:8.4
+  redis:
+    type: redis:8.0
