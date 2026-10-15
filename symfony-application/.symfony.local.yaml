@@ -1,4 +1,0 @@
-http:
-    daemon: true
-workers:
-    docker_compose: ~
