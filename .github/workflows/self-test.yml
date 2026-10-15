@@ -1,0 +1,23 @@
+name: Self-test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - run: make lint
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      # yq is preinstalled on ubuntu-latest; this run is what proves it.
+      - run: yq --version
+      - run: make test YQ=yq

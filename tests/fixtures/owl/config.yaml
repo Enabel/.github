@@ -1,0 +1,17 @@
+applications:
+    app:
+        type: php:8.4
+        relationships:
+            database: { service: mariadb, endpoint: mysql }
+            redis: {}
+
+services:
+    database:
+        type: oracle-mysql:8.4
+    mariadb:
+        type: mariadb:12.3
+        configuration:
+            properties:
+                max_allowed_packet: 64
+    redis:
+        type: redis:8.0

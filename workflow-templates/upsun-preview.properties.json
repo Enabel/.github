@@ -1,0 +1,7 @@
+{
+  "name": "Upsun preview comment",
+  "description": "Comments the Upsun preview environment URL on pull requests.",
+  "iconName": "symfony-icon",
+  "categories": ["Deployment"],
+  "filePatterns": ["^\\.upsun/config\\.yaml$"]
+}

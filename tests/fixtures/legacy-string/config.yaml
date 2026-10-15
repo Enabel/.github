@@ -1,0 +1,8 @@
+applications:
+  app:
+    type: php:8.4
+    relationships:
+      database: "db:mysql"
+services:
+  db:
+    type: oracle-mysql:8.4

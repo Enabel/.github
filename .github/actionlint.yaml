@@ -1,0 +1,5 @@
+paths:
+  .github/workflows/symfony-app.yml:
+    ignore:
+      # Documented job context properties not yet known to actionlint 1.7.12.
+      - 'property "workflow_(repository|sha)" is not defined'

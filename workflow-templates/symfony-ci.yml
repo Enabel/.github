@@ -1,0 +1,18 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [ $default-branch ]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: enabel/.github/.github/workflows/symfony-app.yml@v1
+    # with:
+    #   php-version: '8.4'
+    #   php-extensions: xsl            # added to intl, zip, pdo_mysql, gd, mbstring, bcmath
+    #   system-packages: weasyprint    # extra apt packages for the tests job
+    #   upsun-config: .upsun/config.yaml

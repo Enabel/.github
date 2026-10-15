@@ -1,0 +1,11 @@
+applications:
+  app:
+    type: php:8.4
+    relationships:
+      redis: {}
+      search: {}
+services:
+  redis:
+    type: redis:8.0
+  search:
+    type: opensearch:2

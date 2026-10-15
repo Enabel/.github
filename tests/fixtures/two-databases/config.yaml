@@ -1,0 +1,11 @@
+applications:
+  app:
+    type: php:8.4
+    relationships:
+      database: {}
+      legacy: {}
+services:
+  database:
+    type: mariadb:12.3
+  legacy:
+    type: oracle-mysql:8.4

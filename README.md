@@ -1,11 +1,61 @@
 # .github
 
-Organisation-wide defaults for Enabel repositories on GitHub.
+Organisation-wide defaults and shared CI for Enabel repositories on GitHub.
+
+## Community defaults
 
 A repository without its own file of the same name uses these:
 
 - `pull_request_template.md`: pull request template
 - `ISSUE_TEMPLATE/`: issue templates (bug, task, tech debt, user story)
 
-CI is not here: Symfony applications call the shared reusable workflow in
-[`enabel/ci`](https://github.com/enabel/ci).
+## CI for Symfony applications
+
+In a repository: **Actions → New workflow**, then pick from *By Enabel*:
+
+| Workflow template | Adds | Does |
+|---|---|---|
+| Enabel Symfony CI | `.github/workflows/ci.yml` | `qa`, `tests`, `secrets` through `symfony-app.yml` |
+| Upsun preview comment | `.github/workflows/preview.yml` | comments the Upsun `pr-N` URL on pull requests |
+
+Also copy [`templates/dependabot.yml`](templates/dependabot.yml) to
+`.github/dependabot.yml` (no organisation default exists for Dependabot).
+
+`preview.yml` reacts to the `upsun` commit status. GitHub runs status-triggered
+workflows from the default branch: it works once merged on `main`.
+
+### `symfony-app.yml` inputs
+
+| Input | Default | Use |
+|---|---|---|
+| `php-version` | `8.4` | PHP version |
+| `php-extensions` | empty | added to `intl, zip, pdo_mysql, gd, mbstring, bcmath` |
+| `system-packages` | empty | extra apt packages for the tests job |
+| `upsun-config` | `.upsun/config.yaml` | where test services are read from |
+
+Database and Redis are not configured: `scripts/upsun-services.sh` starts the
+services the application reaches through its Upsun relationships, with the same
+images and versions, and exports `<RELATIONSHIP>_URL`.
+
+- `qa`: composer validate/audit, Symfony lints, XLIFF, Doctrine schema, php-cs-fixer, phpstan
+- `tests`: Upsun services, migrations on an empty database, PHPUnit (no coverage)
+- `secrets`: gitleaks on the commits of the pull request or push
+
+### Versions
+
+Callers use `@v1`.
+
+- fix or compatible change: tag `vX.Y.Z`, then move `v1`
+  (`git tag -f v1 && git push -f origin v1`)
+- breaking change: `v2.0.0`; Dependabot offers the upgrade in projects
+
+### Development
+
+Docker only.
+
+```bash
+make lint   # shellcheck + actionlint
+make test   # scripts/upsun-services.sh tests (SKIP_DOCKER=1 skips integration)
+```
+
+Design and decisions: `enabel/platform-docs` (private), `specs/`.
