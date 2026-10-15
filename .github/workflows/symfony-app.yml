@@ -39,6 +39,10 @@ jobs:
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-qa
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    env:
+      # Checks need no assets: skip the Composer scripts (importmap:install
+      # downloads from a CDN, assets:install copies bundle assets).
+      ROOT_INSTALL_FLAGS: --no-scripts
     steps:
       # Setup steps are anchored and reused by the tests job.
       - &checkout
@@ -65,56 +69,59 @@ jobs:
           restore-keys: composer-${{ runner.os }}-
 
       - &install
+        id: install
         name: Install dependencies
         run: |
           shopt -s nullglob
-          composer install --prefer-dist --no-progress
+          # shellcheck disable=SC2086 # flags are meant to be split
+          composer install --prefer-dist --no-progress ${ROOT_INSTALL_FLAGS:-}
           for dir in tools/*/; do
             if [ -f "$dir/composer.json" ]; then
               composer install --prefer-dist --no-progress -d "$dir"
             fi
           done
 
-      # --- qa checks: each runs even if a previous one failed -----------------
+      # --- qa checks: each runs even if a previous check failed, but none runs
+      # when the install failed (they would only repeat that failure).
 
       - name: Composer validate
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: composer validate --no-check-publish
 
       - name: Composer audit
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: composer audit
 
       - name: Lint YAML
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: bin/console lint:yaml config --parse-tags
 
       - name: Lint Twig
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: bin/console lint:twig templates
 
       - name: Lint container
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: bin/console lint:container
 
       - name: Lint XLIFF
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
           [ -d translations ] || exit 0
           bin/console lint:xliff translations
 
       - name: Doctrine schema
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
           [ -f config/packages/doctrine.yaml ] || exit 0
           bin/console doctrine:schema:validate --skip-sync --no-interaction
 
       - name: PHP CS Fixer
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: tools/php-cs-fixer/vendor/bin/php-cs-fixer fix --dry-run --format=checkstyle | cs2pr
 
       - name: PHPStan
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
           bin/console cache:warmup
           tools/phpstan/vendor/bin/phpstan analyse --memory-limit=512M --error-format=github
