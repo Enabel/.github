@@ -160,7 +160,12 @@ if [ "${SKIP_DOCKER:-0}" != 1 ]; then
     cleanup
 
     CASE=integration-timeout
-    out=$(UPSUN_SERVICES_TIMEOUT=1 GITHUB_ENV="$tmp/unused" bash "$SCRIPT" "$FIXTURES/mariadb/config.yaml" 2>&1)
+    # MariaDB alone: with a second service, its slower pull could leave MariaDB
+    # healthy before the wait starts, and the timeout would never trigger.
+    mkdir -p "$tmp/mariadb-only"
+    printf 'applications:\n  app:\n    relationships:\n      database: {}\nservices:\n  database:\n    type: mariadb:12.3\n' \
+        >"$tmp/mariadb-only/config.yaml"
+    out=$(UPSUN_SERVICES_TIMEOUT=1 GITHUB_ENV="$tmp/unused" bash "$SCRIPT" "$tmp/mariadb-only/config.yaml" 2>&1)
     status=$?
     expect_status 1
     expect_annotation "::error::" database
