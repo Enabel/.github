@@ -6,7 +6,17 @@ updates:
       - /tools/*
     schedule:
       interval: weekly
+    # One pull request per week for minor and patch updates: each pull request
+    # builds an Upsun preview and gets a review. Majors and security updates
+    # still come one by one.
+    groups:
+      composer:
+        patterns: ["*"]
+        update-types: [minor, patch]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
