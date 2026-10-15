@@ -9,6 +9,3 @@ A repository without its own file of the same name uses these:
 
 CI is not here: Symfony applications call the shared reusable workflow in
 [`enabel/ci`](https://github.com/enabel/ci).
-
-`symfony-application/` holds reference configuration for new Symfony
-applications (coding-standard tools, Makefile, PHP and test settings).
