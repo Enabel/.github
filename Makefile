@@ -9,3 +9,4 @@ lint:
 test:
 	YQ="$(YQ)" bash tests/upsun-services.test.sh
 	YQ="$(YQ)" bash tests/upsun-dependencies.test.sh
+	bash tests/typesense.test.sh
