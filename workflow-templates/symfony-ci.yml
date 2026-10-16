@@ -17,3 +17,4 @@ jobs:
     #   system-packages: weasyprint    # extra apt packages for the tests job
     #   upsun-config: .upsun/config.yaml
     #   typesense: '29.0'                # Typesense for the tests (enabel/typesense)
+    #   fixtures: true                   # doctrine:fixtures:load before the tests

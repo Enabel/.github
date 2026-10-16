@@ -23,6 +23,10 @@ on:
         description: Typesense version to run for the tests (external to Upsun, so not in its config), e.g. '29.0'
         type: string
         default: ''
+      fixtures:
+        description: Load the Doctrine fixtures (doctrine:fixtures:load) after the migrations, for tests that read them
+        type: boolean
+        default: false
 
 # No job needs to write to the repository; callers cannot grant more anyway.
 permissions:
@@ -186,7 +190,11 @@ jobs:
           # migration fails here (qa only validates the mapping, without a database).
           bin/console doctrine:schema:validate --no-interaction
 
-      # After the migrations: the import reads the database.
+      - name: Fixtures
+        if: ${{ inputs.fixtures }}
+        run: bin/console doctrine:fixtures:load --no-interaction
+
+      # After the migrations and fixtures: the import reads the database.
       - name: Typesense collections
         if: ${{ inputs.typesense != '' }}
         run: |
