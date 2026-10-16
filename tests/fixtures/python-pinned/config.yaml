@@ -1,0 +1,10 @@
+applications:
+    app:
+        type: php:8.4
+        dependencies:
+            python3:
+                # pinned like Travel
+                weasyprint: '70.0'
+services:
+    database:
+        type: mariadb:11.8

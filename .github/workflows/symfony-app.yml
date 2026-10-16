@@ -153,6 +153,9 @@ jobs:
           ref: ${{ job.workflow_sha }}
           path: .enabel-ci
 
+      - name: Install Upsun dependencies
+        run: bash .enabel-ci/scripts/upsun-dependencies.sh "${{ inputs.upsun-config }}"
+
       - name: Start Upsun services
         run: bash .enabel-ci/scripts/upsun-services.sh "${{ inputs.upsun-config }}"
 

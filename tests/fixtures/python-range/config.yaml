@@ -1,0 +1,6 @@
+applications:
+  app:
+    dependencies:
+      python3:
+        weasyprint: '>=70,<71'
+        pydyf: '0.11.0'
