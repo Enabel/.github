@@ -19,6 +19,10 @@ on:
         description: Upsun config the test services are read from
         type: string
         default: .upsun/config.yaml
+      typesense:
+        description: Typesense version to run for the tests (external to Upsun, so not in its config), e.g. '29.0'
+        type: string
+        default: ''
 
 # No job needs to write to the repository; callers cannot grant more anyway.
 permissions:
@@ -164,6 +168,10 @@ jobs:
       - name: Start Upsun services
         run: bash .enabel-ci/scripts/upsun-services.sh "${{ inputs.upsun-config }}"
 
+      - name: Start Typesense
+        if: ${{ inputs.typesense != '' }}
+        run: bash .enabel-ci/scripts/typesense.sh "${{ inputs.typesense }}"
+
       - name: Importmap
         run: |
           [ -f importmap.php ] || exit 0
@@ -174,6 +182,13 @@ jobs:
           [ -n "${DATABASE_URL:-}" ] || exit 0
           bin/console doctrine:database:create --if-not-exists
           bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+
+      # After the migrations: the import reads the database.
+      - name: Typesense collections
+        if: ${{ inputs.typesense != '' }}
+        run: |
+          bin/console enabel:typesense:create -n
+          bin/console enabel:typesense:import -n
 
       - name: PHPUnit
         # Projects may configure coverage reports in phpunit.dist.xml; CI runs
