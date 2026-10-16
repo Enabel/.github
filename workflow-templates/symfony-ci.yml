@@ -18,3 +18,4 @@ jobs:
     #   upsun-config: .upsun/config.yaml
     #   typesense: '29.0'                # Typesense for the tests (enabel/typesense)
     #   fixtures: true                   # doctrine:fixtures:load before the tests
+    #   sass: true                       # yarn install + sass:build before the tests

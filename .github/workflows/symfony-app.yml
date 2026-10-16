@@ -27,6 +27,10 @@ on:
         description: Load the Doctrine fixtures (doctrine:fixtures:load) after the migrations, for tests that read them
         type: boolean
         default: false
+      sass:
+        description: Build the Sass stylesheets (symfonycasts/sass-bundle) before the tests, after a yarn install of their sources
+        type: boolean
+        default: false
 
 # No job needs to write to the repository; callers cannot grant more anyway.
 permissions:
@@ -180,6 +184,15 @@ jobs:
         run: |
           [ -f importmap.php ] || exit 0
           bin/console importmap:install
+
+      # Templates link the compiled stylesheets: without them, pages fail to
+      # render. The Sass sources come from node_modules (sass_options.load_path).
+      - name: Sass
+        if: ${{ inputs.sass }}
+        run: |
+          command -v yarn >/dev/null || npm install --global yarn
+          yarn install --frozen-lockfile
+          bin/console sass:build
 
       - name: Database
         run: |
