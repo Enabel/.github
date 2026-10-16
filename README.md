@@ -33,6 +33,7 @@ workflows from the default branch: it works once merged on `main`.
 | `system-packages` | empty | extra apt packages for the tests job |
 | `upsun-config` | `.upsun/config.yaml` | where test services are read from |
 | `typesense` | empty | Typesense version for the tests, e.g. `'29.0'`: starts it, exports `TYPESENSE_URL`/`KEY`/`PREFIX`, runs `enabel:typesense:create` and `import` after the migrations |
+| `fixtures` | `false` | `true` runs `doctrine:fixtures:load` after the migrations (and before the Typesense import), for tests that read the fixtures |
 
 Database and Redis are not configured: `scripts/upsun-services.sh` starts the
 services the application reaches through its Upsun relationships, with the same
