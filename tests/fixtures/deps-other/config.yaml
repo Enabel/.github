@@ -1,0 +1,7 @@
+applications:
+  app:
+    dependencies:
+      nodejs:
+        sass: '1.77.0'
+      python3:
+        weasyprint: '70.0'

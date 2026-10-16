@@ -20,4 +20,7 @@ jobs:
       - uses: actions/checkout@v5
       # yq is preinstalled on ubuntu-latest; this run is what proves it.
       - run: yq --version
+      # The runner is throwaway: let the tests really pip-install a package.
       - run: make test YQ=yq
+        env:
+          RUN_PIP_INTEGRATION: 1

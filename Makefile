@@ -8,3 +8,4 @@ lint:
 	$(ACTIONLINT)
 test:
 	YQ="$(YQ)" bash tests/upsun-services.test.sh
+	YQ="$(YQ)" bash tests/upsun-dependencies.test.sh

@@ -37,6 +37,11 @@ Database and Redis are not configured: `scripts/upsun-services.sh` starts the
 services the application reaches through its Upsun relationships, with the same
 images and versions, and exports `<RELATIONSHIP>_URL`.
 
+Python dependencies declared for the application
+(`applications.*.dependencies.python3`, e.g. WeasyPrint) are installed by
+`scripts/upsun-dependencies.sh` in the tests job, with the same pinned versions.
+System libraries they need go through the `system-packages` input.
+
 - `qa`: composer validate/audit, Symfony lints, XLIFF, Doctrine schema, php-cs-fixer, phpstan
 - `tests`: Upsun services, migrations on an empty database, PHPUnit (no coverage)
 - `secrets`: gitleaks on the commits of the pull request or push
