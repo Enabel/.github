@@ -182,6 +182,9 @@ jobs:
           [ -n "${DATABASE_URL:-}" ] || exit 0
           bin/console doctrine:database:create --if-not-exists
           bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+          # Migrations and mapping must agree: an entity changed without its
+          # migration fails here (qa only validates the mapping, without a database).
+          bin/console doctrine:schema:validate --no-interaction
 
       # After the migrations: the import reads the database.
       - name: Typesense collections

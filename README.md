@@ -44,7 +44,7 @@ Python dependencies declared for the application
 System libraries they need go through the `system-packages` input.
 
 - `qa`: composer validate/audit, Symfony lints, XLIFF, Doctrine schema, php-cs-fixer, phpstan
-- `tests`: Upsun services, migrations on an empty database, PHPUnit (no coverage)
+- `tests`: Upsun services, migrations on an empty database, full schema validation (migrations vs mapping), PHPUnit (no coverage)
 - `secrets`: gitleaks on the commits of the pull request or push
 
 ### Versions
