@@ -47,6 +47,17 @@ System libraries they need go through the `system-packages` input.
 - `tests`: Upsun services, migrations on an empty database, full schema validation (migrations vs mapping), PHPUnit (no coverage)
 - `secrets`: gitleaks on the commits of the pull request or push
 
+### Other projects
+
+A project that cannot use `symfony-app.yml` (OpenLegacy, Zend Framework 1)
+keeps its own jobs and calls the shared secret scan:
+
+```yaml
+jobs:
+  secrets:
+    uses: enabel/.github/.github/workflows/secrets.yml@v1
+```
+
 ### Versions
 
 Callers use `@v1`.

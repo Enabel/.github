@@ -198,6 +198,7 @@ jobs:
         # without a coverage driver, and failOnWarning would turn that into a failure.
         run: vendor/bin/phpunit --testdox --no-coverage
 
+  # Same job as secrets.yml (kept here so symfony-app.yml stays self-contained).
   # No concurrency group: a pending run cancelled by a newer push would leave
   # its commit range unscanned, since each run only scans its own range.
   secrets:
