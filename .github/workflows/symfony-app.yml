@@ -137,10 +137,11 @@ jobs:
     steps:
       - *checkout
       - *setup-php
-      - *composer-cache-dir
-      - *composer-cache
-      - *install
 
+      # System packages and Upsun dependencies come before `composer install`:
+      # its cache:clear compiles the container, and bundles resolve binaries
+      # (e.g. weasyprint) at that point, as on Upsun where dependencies are
+      # installed before the build.
       - name: System packages
         if: ${{ inputs.system-packages != '' }}
         run: sudo apt-get update && sudo apt-get install -y ${{ inputs.system-packages }}
@@ -155,6 +156,10 @@ jobs:
 
       - name: Install Upsun dependencies
         run: bash .enabel-ci/scripts/upsun-dependencies.sh "${{ inputs.upsun-config }}"
+
+      - *composer-cache-dir
+      - *composer-cache
+      - *install
 
       - name: Start Upsun services
         run: bash .enabel-ci/scripts/upsun-services.sh "${{ inputs.upsun-config }}"
