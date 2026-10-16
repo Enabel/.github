@@ -34,6 +34,7 @@ workflows from the default branch: it works once merged on `main`.
 | `upsun-config` | `.upsun/config.yaml` | where test services are read from |
 | `typesense` | empty | Typesense version for the tests, e.g. `'29.0'`: starts it, exports `TYPESENSE_URL`/`KEY`/`PREFIX`, runs `enabel:typesense:create` and `import` after the migrations |
 | `fixtures` | `false` | `true` runs `doctrine:fixtures:load` after the migrations (and before the Typesense import), for tests that read the fixtures |
+| `sass` | `false` | `true` runs `yarn install --frozen-lockfile` and `sass:build` before the tests (symfonycasts/sass-bundle with Sass sources in `node_modules`) |
 
 Database and Redis are not configured: `scripts/upsun-services.sh` starts the
 services the application reaches through its Upsun relationships, with the same
