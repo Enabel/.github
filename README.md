@@ -18,8 +18,10 @@ In a repository: **Actions → New workflow**, then pick from *By Enabel*:
 | Enabel Symfony CI | `.github/workflows/ci.yml` | `qa`, `tests`, `secrets` through `symfony-app.yml` |
 | Upsun preview comment | `.github/workflows/preview.yml` | comments the Upsun `pr-N` URL on pull requests |
 
-Also copy [`templates/dependabot.yml`](templates/dependabot.yml) to
-`.github/dependabot.yml` (no organisation default exists for Dependabot).
+Dependency updates come from Renovate, configured once for the organisation in
+`enabel/renovate-config`: add the repository to the Mend Renovate app, no file
+is needed in the project. Keep Dependabot alerts enabled (Renovate reads them
+for security updates) and Dependabot security updates disabled.
 
 `preview.yml` reacts to the `upsun` commit status. GitHub runs status-triggered
 workflows from the default branch: it works once merged on `main`.
@@ -66,7 +68,7 @@ Callers use `@v1`.
 
 - fix or compatible change: tag `vX.Y.Z`, then move `v1`
   (`git tag -f v1 && git push -f origin v1`)
-- breaking change: `v2.0.0`; Dependabot offers the upgrade in projects
+- breaking change: `v2.0.0`; Renovate offers the upgrade in projects
 
 ### Development
 
