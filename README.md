@@ -8,6 +8,8 @@ A repository without its own file of the same name uses these:
 
 - `pull_request_template.md`: pull request template
 - `ISSUE_TEMPLATE/`: issue templates (bug, task, tech debt, user story)
+- `SECURITY.md`: how to report a vulnerability (csirt@enabel.be), supported versions, ASVS target level per
+  application
 
 ## CI for Symfony applications
 
