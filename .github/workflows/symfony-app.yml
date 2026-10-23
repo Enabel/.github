@@ -58,7 +58,7 @@ jobs:
     steps:
       # Setup steps are anchored and reused by the tests job.
       - &checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - &setup-php
         uses: shivammathur/setup-php@v2
@@ -160,7 +160,7 @@ jobs:
 
       # In a reusable workflow `./` is the caller's repository: fetch the
       # script from this workflow's own repository, at this workflow's commit.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           repository: ${{ job.workflow_repository }}
           ref: ${{ job.workflow_sha }}
@@ -226,7 +226,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
