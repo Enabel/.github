@@ -1,0 +1,15 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [ $default-branch ]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: enabel/.github/.github/workflows/symfony-bundle.yml@v1
+    # with:
+    #   typesense: '29.0 30.1'   # Typesense servers for the tests: TYPESENSE_V<major>_URL, TYPESENSE_API_KEY
