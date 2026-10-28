@@ -1,0 +1,222 @@
+# Reusable CI for Enabel Symfony bundles and libraries.
+# Fixed matrix (PHP 8.4/8.5, Symfony 8) and the same check names as
+# symfony-app.yml (qa, tests, secrets), so one branch ruleset fits both.
+name: Symfony bundle
+
+on:
+  workflow_call:
+    inputs:
+      typesense:
+        description: Typesense versions to run for the tests, space-separated (e.g. '29.0 30.1'); each exports TYPESENSE_V<major>_URL
+        type: string
+        default: ''
+
+# No job needs to write to the repository; callers cannot grant more anyway.
+permissions:
+  contents: read
+
+env:
+  COMPOSER_NO_INTERACTION: 1
+  # Read by symfony/flex (installed globally below): every symfony/* package
+  # resolves to Symfony 8, whatever range the bundle allows.
+  SYMFONY_REQUIRE: '8.*'
+
+# Explicit `bash` adds pipefail: `php-cs-fixer | cs2pr` must fail when php-cs-fixer does.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-qa
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    env:
+      PHP_VERSION: '8.4'
+      UPDATE_FLAGS: --prefer-stable
+    steps:
+      # Setup steps are anchored and reused by the tests matrix.
+      - &checkout
+        uses: actions/checkout@v7
+
+      - &setup-php
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: none
+          ini-values: memory_limit=512M
+          tools: composer:v2, cs2pr
+
+      - &composer-cache-dir
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      # A library has no lock file to key on: composer.json is the input.
+      - &composer-cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.json', 'tools/*/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - &flex
+        name: Symfony Flex
+        run: |
+          composer global config --no-plugins allow-plugins.symfony/flex true
+          composer global require --no-progress --no-scripts symfony/flex
+
+      # `update`, not `install`: a bundle is tested against what its users get,
+      # not against a lock file.
+      - &install
+        id: install
+        name: Install dependencies
+        run: |
+          shopt -s nullglob
+          # shellcheck disable=SC2086 # flags are meant to be split
+          composer update --prefer-dist --no-progress $UPDATE_FLAGS
+          for dir in tools/*/; do
+            if [ -f "$dir/composer.json" ]; then
+              composer install --prefer-dist --no-progress -d "$dir"
+            fi
+          done
+
+      # --- qa checks: each runs even if a previous check failed, but none runs
+      # when the install failed (they would only repeat that failure).
+
+      - name: Composer validate
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: composer validate --strict --no-check-lock
+
+      - name: Composer audit
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: composer audit
+
+      - name: Lint PHP
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: find src -name '*.php' -print0 | xargs -0 -r -n1 -P4 php -l >/dev/null
+
+      - name: PHP CS Fixer
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          for bin in tools/php-cs-fixer/vendor/bin/php-cs-fixer vendor/bin/php-cs-fixer; do
+            if [ -x "$bin" ]; then
+              "$bin" fix --dry-run --format=checkstyle | cs2pr
+              exit
+            fi
+          done
+          echo "::notice::PHP CS Fixer not installed (tools/php-cs-fixer or require-dev): skipped"
+
+      - name: PHPStan
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          for bin in tools/phpstan/vendor/bin/phpstan vendor/bin/phpstan; do
+            if [ -x "$bin" ]; then
+              "$bin" analyse --memory-limit=512M --error-format=github --no-progress
+              exit
+            fi
+          done
+          echo "::notice::PHPStan not installed (tools/phpstan or require-dev): skipped"
+
+  tests-matrix:
+    name: tests (PHP ${{ matrix.php }}, ${{ matrix.deps }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-tests-${{ matrix.php }}-${{ matrix.deps }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '8.4'
+            deps: lowest
+            flags: --prefer-lowest --prefer-stable
+          - php: '8.4'
+            deps: highest
+            flags: --prefer-stable
+          - php: '8.5'
+            deps: highest
+            flags: --prefer-stable
+    env:
+      PHP_VERSION: ${{ matrix.php }}
+      UPDATE_FLAGS: ${{ matrix.flags }}
+    steps:
+      - *checkout
+      - *setup-php
+      - *composer-cache-dir
+      - *composer-cache
+      - *flex
+      - *install
+
+      # GitHub env vars win over phpunit.xml.dist <env> values (not forced).
+      - name: Start Typesense
+        if: ${{ inputs.typesense != '' }}
+        env:
+          VERSIONS: ${{ inputs.typesense }}
+        run: |
+          for version in $VERSIONS; do
+            major=${version%%.*}
+            port=$((18000 + major))
+            docker run -d --name "ci-typesense-v$major" -p "127.0.0.1:$port:8108" \
+              "typesense/typesense:$version" --data-dir /tmp --api-key=ci >/dev/null
+            timeout 60 sh -c "until curl -sf http://127.0.0.1:$port/health; do sleep 1; done" >/dev/null \
+              || { docker logs "ci-typesense-v$major" >&2; echo "::error::Typesense $version not healthy"; exit 1; }
+            echo "TYPESENSE_V${major}_URL=http://127.0.0.1:$port" >> "$GITHUB_ENV"
+          done
+          echo "TYPESENSE_API_KEY=ci" >> "$GITHUB_ENV"
+
+      - name: PHPUnit
+        run: |
+          if [ -f phpunit.xml.dist ] || [ -f phpunit.xml ] || [ -f phpunit.dist.xml ]; then
+            vendor/bin/phpunit --testdox --no-coverage
+          else
+            echo "::warning::No PHPUnit configuration: only the dependency install was tested"
+          fi
+
+  # The single `tests` check the ruleset requires, whatever the matrix holds.
+  # `always()`: a skipped required check counts as passed, so it must run and
+  # fail itself when a matrix entry failed or was cancelled.
+  tests:
+    needs: tests-matrix
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Matrix result
+        env:
+          RESULT: ${{ needs.tests-matrix.result }}
+        run: |
+          echo "tests matrix: $RESULT"
+          [ "$RESULT" = success ]
+
+  # Same job as secrets.yml, copied rather than called: a nested call would be
+  # reported as `ci / secrets / secrets` and miss the ruleset check name.
+  # No concurrency group: a pending run cancelled by a newer push would leave
+  # its commit range unscanned, since each run only scans its own range.
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Commit range
+        id: range
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          # A push creating a branch has no "before": scan the pushed commit only.
+          if [ -z "$BASE" ] || [ "$BASE" = 0000000000000000000000000000000000000000 ]; then
+            echo "log-opts=-1 $HEAD" >> "$GITHUB_OUTPUT"
+          else
+            echo "log-opts=$BASE..$HEAD" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Gitleaks
+        run: >-
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.28.0
+          git --log-opts="${{ steps.range.outputs.log-opts }}" --redact -v /repo

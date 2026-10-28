@@ -16,6 +16,7 @@ In a repository: **Actions → New workflow**, then pick from *By Enabel*:
 | Workflow template | Adds | Does |
 |---|---|---|
 | Enabel Symfony CI | `.github/workflows/ci.yml` | `qa`, `tests`, `secrets` through `symfony-app.yml` |
+| Enabel Symfony bundle CI | `.github/workflows/ci.yml` | `qa`, `tests`, `secrets` through `symfony-bundle.yml` |
 | Upsun preview comment | `.github/workflows/preview.yml` | comments the Upsun `pr-N` URL on pull requests |
 
 Dependency updates come from Renovate, configured once for the organisation in
@@ -50,6 +51,26 @@ System libraries they need go through the `system-packages` input.
 - `qa`: composer validate/audit, Symfony lints, XLIFF, Doctrine schema, php-cs-fixer, phpstan
 - `tests`: Upsun services, migrations on an empty database, full schema validation (migrations vs mapping), PHPUnit (no coverage)
 - `secrets`: gitleaks on the commits of the pull request or push
+
+## CI for Symfony bundles
+
+Template **Enabel Symfony bundle CI**, through `symfony-bundle.yml`. Same check
+names as the application CI (`ci / qa`, `ci / tests`, `ci / secrets`): one
+branch ruleset fits both.
+
+The matrix is fixed: PHP 8.4 lowest, 8.4 highest, 8.5 highest, all on Symfony 8
+(`SYMFONY_REQUIRE=8.*` through Flex). Dependencies are resolved with
+`composer update`: a lock file in the bundle is ignored.
+
+- `qa`: composer validate (strict) and audit, `php -l` on `src`, php-cs-fixer
+  and phpstan when installed (`tools/<tool>` first, then `vendor/bin`)
+- `tests`: one entry per matrix line, then a `tests` job that fails if any
+  failed; PHPUnit when a `phpunit.xml(.dist)` exists (no coverage)
+- `secrets`: gitleaks, as for applications
+
+| Input | Default | Use |
+|---|---|---|
+| `typesense` | empty | space-separated versions, e.g. `'29.0 30.1'`: one server each, exports `TYPESENSE_V<major>_URL` and `TYPESENSE_API_KEY` |
 
 ### Other projects
 

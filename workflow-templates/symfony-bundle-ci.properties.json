@@ -1,0 +1,7 @@
+{
+  "name": "Enabel Symfony bundle CI",
+  "description": "QA, tests (PHP 8.4/8.5, Symfony 8) and secret scan for an Enabel Symfony bundle or library, through the shared reusable workflow.",
+  "iconName": "symfony-icon",
+  "categories": ["PHP", "Symfony"],
+  "filePatterns": ["^composer\\.json$"]
+}
